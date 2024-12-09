@@ -15,92 +15,7 @@ import keypad
 '''
     Creates the image data for each image
 '''
-def create_data(image):
-    global image_mover
-    global group
     
-    sprite_sheet = None
-    palette = None
-    image_mover = None
-    sprite_sheet, palette = adafruit_imageload.load(image, bitmap=displayio.Bitmap, palette=displayio.Palette)
-
-    image_mover = displayio.TileGrid(sprite_sheet, pixel_shader=palette,
-                    width = 5,
-                    height = 4,
-                    tile_width = 32, 
-                    tile_height = 32)
-                    
-    mixlist = list(range(20))
-    for i in range(20):
-        image_mover[i] = i
-        
-    
-    
-    #groupstack so the game makes sense
-    imagegroup = displayio.Group(scale = 1)
-    imagegroup.append(image_mover)
-
-    group.append(imagegroup)
-    mixup_image(gamelevel)
-
-def animate_wrongmove():
-    rect = Rect(0, 0, 160, 128, fill=0xff0000)
-    tempgroup = displayio.Group(scale=1)
-    tempgroup.append(rect)
-    group.append(tempgroup)
-
-    time.sleep(0.1)
-
-    group.pop()
-
-def animate_highlight(startpos, endpos):
-    global rectpos
-    rect = Rect(0, 0, 32, 32, outline=0xff0000)
-    tempgroup = displayio.Group(scale = 1)
-    tempgroup.append(rect)
-    group.append(tempgroup)
-
-    tempgroup.x = (startpos%5)*32
-    tempgroup.y = int(startpos/5)*32
-
-    endposx = int(endpos%5)*32
-    endposy = int(endpos/5)*32
-
-    while tempgroup.x != endposx or tempgroup.y != endposy:
-        if endposx > tempgroup.x:
-            tempgroup.x += 1
-        elif endposx < tempgroup.x:
-            tempgroup.x -= 1
-
-        if endposy > tempgroup.y:
-            tempgroup.y += 1
-        elif endposy < tempgroup.y:
-            tempgroup.y -= 1
-
-        time.sleep(0.005)
-
-    group.pop()
-
-
-
-
-def draw_highlight():
-    global rectpos
-    global highlightgroup
-    
-    #highlight the moving position 
-    rectangle_m = Rect(0, 0, 32, 32, fill = 0x000000)
-    highlightgroup = displayio.Group(scale = 1)
-    highlightgroup.append(rectangle_m)
-    group.append(highlightgroup)
-    
-    highlightgroup.x = (rectpos%5)*32
-    highlightgroup.y = int(rectpos/5)*32
-    
-    
-def create_game_win():
-    pm.show_win()
-
 #setup keypad events
 k = keypad.ShiftRegisterKeys(
     clock=board.BUTTON_CLOCK,
@@ -110,119 +25,13 @@ k = keypad.ShiftRegisterKeys(
     value_when_pressed=True,
 )
 
-def swap_right():
-    global rectpos
-    global image_mover
-    oldpos = rectpos
-    oldval = image_mover[oldpos]
-    if (rectpos+1)%5 == 0:
-        animate_wrongmove()
-        return
-    else:
-        rectpos = (rectpos+1)
-    
-    animate_highlight(rectpos, oldpos)
-    image_mover[oldpos] = image_mover[rectpos]
-    image_mover[rectpos] = oldval
-
-def swap_left():
-    global rectpos
-    oldpos = rectpos
-    oldval = image_mover[oldpos]
-    if rectpos%5 == 0:
-        animate_wrongmove()
-        return
-    else:
-        rectpos = (rectpos-1)
-    if rectpos < 0:
-        rectpos = rectpos+20
-        
-    animate_highlight(rectpos, oldpos)
-    image_mover[oldpos] = image_mover[rectpos]
-    image_mover[rectpos] = oldval
-    
-def swap_down():
-    global rectpos
-    oldpos = rectpos
-    oldval = image_mover[oldpos]
-    if (rectpos+5) >= 20:
-        animate_wrongmove()
-        return
-    else:
-        rectpos = (rectpos+5)
-    animate_highlight(rectpos, oldpos)
-    
-    image_mover[oldpos] = image_mover[rectpos]
-    image_mover[rectpos] = oldval
-    
-
-def swap_up():
-    global rectpos
-    oldpos = rectpos
-    oldval = image_mover[oldpos]
-    if rectpos - 5 < 0:
-        animate_wrongmove()
-        return
-    else: 
-        rectpos = (rectpos-5)
-        
-    animate_highlight(rectpos, oldpos)
-    image_mover[oldpos] = image_mover[rectpos]
-    image_mover[rectpos] = oldval
-
-def update_highlight():
-    global highlightgroup
-    global rectpos
-    highlightgroup.x = (rectpos%5)*32
-    highlightgroup.y = int(rectpos/5)*32
-
-def mixup_image(level):
-    global rectpos 
-    rectpos = random.randint(0, 20)
-    
-    mixlist = (0,1,2,3)
-    for i in range((level+2)*5):
-        r = random.choice(mixlist)
-        if r == 0:
-            swap_right()
-        elif r == 1:
-            swap_left()
-        elif r == 2:
-            swap_up()
-        elif r == 3:
-            swap_down()
-        
-        time.sleep(0.05)
-
-    update_highlight()
-        
-def show_level_up():
-    global gamestate
-    global group
-    global imagelist
-    global gamelevel
-    
-    hlg = group.pop()
-    pm.show_level_up()
-    group.pop()
-    
-    gamelevel += 1
-    
-    if gamelevel == 5:
-        create_game_win()
-    else:    
-        create_data(imagelist[gamelevel])
-    
-    gamestate = PLAYING
-    group.append(hlg)
-    
-
 #setup neopixel strand for timer
 GREEN = (0, 255, 0)
 YELLOW = (255, 100, 0)
 ORANGE = (200, 150, 0)
 PINK = (100, 0, 100)
 RED = (255, 0, 0)
+
 class PixelManager(object):
     def __init__(self):
         self.level = 0
@@ -278,79 +87,141 @@ class PixelManager(object):
         self.pixels.show()
 
 
+class PulseArray(object):
+    def __init__(self):
+        self.MAXLEN = 6
+        self.arr = list()
+        self.len = 0
 
-def check_win():
-    global image_mover
-    global rectpos
-    global gamestate
-    
-    vals = list()
-    for i in range(20):
-        vals.append(image_mover[i])
-        
-    print(vals)
-    for i in range(20):
-        if rectpos == i:
-            continue
-        if image_mover[i] != i:
-            print("%d not equal to %d" % (image_mover[i], i))
+    def add(self, sampletime):
+        if len(self.arr) < self.MAXLEN:
+            self.arr.append(sampletime)
+            self.len += 1
+
+            print(self.arr)
+        else:
             return
-    
-    
-    gamestate = LEVELUP
-    show_level_up()
-    
 
-    
-#setup game variables
-PLAYING = 0
-LEVELUP = 1
-gamestate = PLAYING
-gamelevel = 0
+    def clear_arr(self):
+        self.arr = list()
+        self.len = 0
 
-#setup display
-display = board.DISPLAY
-group = displayio.Group(scale=1)
+    def get_arr(self):
+        return self.arr[::]
 
-#create image mixer
-imagelist = ["numbers.bmp", "dogfire.bmp", "camelkiss.bmp", "turtlefris.bmp", "cowview.bmp"]
 
-sprite_sheet = None
-image_mover = None
-highlightgroup = None
-imagegroup = None
-rectpos = int(0)
+MAX_PULSE = 1.0
+MIN_PULSE = 0.1
 
-timepiece = time.time()
+class PulseTranslator(object):
+    def __init__(self):
+        self.pulsearr = PulseArray()
+        self.pulsetempo = 0.5
 
-display.root_group = group
+    def add(self, sampletime):
+        self.pulsearr.add(sampletime)
 
-group.x = 0
-group.y = 0
-create_data(imagelist[0]) 
-draw_highlight()
+    def clear_arr(self):
+        self.pulsearr.clear_arr()
 
-pm = PixelManager()
+    def encode_pulses(self):
+        plist = list()
+        if self.pulsearr.len == 0:
+            print("no items to encode")
+            return
+
+        for item in self.pulsearr.get_arr():
+            if item <= self.pulsetempo:
+                plist.append(0)
+            elif item >= self.pulsetempo*2:
+                plist.append(1)
+            else:
+                print("pulse in weird length")
+                print("period: %f" % self.pulsetempo)
+                print("pulse measured: %f" % item)
+
+        print(plist)
+        self.pulsearr.clear_arr()
+
+
+    def track_period(self, period):
+        #if the period is too long for morse code
+        print("period: %f" % period)
+        if period > 2.5:
+            return
+
+        #print("diffperiod: %f" %(period - self.pulsetempo))
+
+        self.pulsetempo = self.pulsetempo + 0.05*(period- self.pulsetempo)
+        if self.pulsetempo > 2.5:
+            self.pulsetempo = 2.5
+        elif self.pulsetempo < 0.1:
+            self.pulsetempo = 0.1
+
+        #print("pulsetempo: %f" % self.pulsetempo)
+
+    def get_pulsetempo(self):
+        return self.pulsetempo
         
+now = 0
+class TimerMonitor(object):
+    def __init__(self, timeout, cb_function):
+        self.base = time.monotonic()
+        self.now = time.monotonic()
+        self.timeout = timeout
+        self.docallback = cb_function
+
+    def check_time(self):
+        self.now = time.monotonic()
+
+        if self.now - self.base > self.timeout:
+            print("check time")
+            self.docallback()
+            self.reset_base()
+
+    def set_timeout(self, timeout):
+        self.timeout = timeout
+
+    def reset_base(self):
+        self.base = time.monotonic()
+
+pulsetranslator = PulseTranslator()
+tm = TimerMonitor(1.0, pulsetranslator.encode_pulses)
+oldpulse = 0.0
+newpulse = 0.0
+button_pressed = False #needed to prevent timeout from firing too early
+
+#main while
 while True:
     event = k.events.get()
     if event:
-        if event.pressed == True:
-            if event.key_number == 4:
-                swap_left()
-            if event.key_number == 5:
-                swap_up()
-            if event.key_number == 6:
-                swap_down()
-            if event.key_number == 7:
-                swap_right()
-                
-            update_highlight()
-          
-    if time.time() - timepiece > 1:
-        if gamestate == PLAYING:
-            check_win()
-            timepiece = time.time()
-                
-    
+        if event.pressed == True or event.released == True:
+            if event.key_number == 4: #right
+                if event.released == False:
+                    print("press")
+                    button_pressed = True
+                    now = time.monotonic()
+                    oldpulse = newpulse
+                    newpulse = time.monotonic()
+                    pulsetranslator.track_period((newpulse-oldpulse))
 
+                else:
+                    print("release")
+                    button_pressed = False
+                    oldnow = now
+                    now = time.monotonic()
+                    pulsetranslator.add(now-oldnow)
+                    tm.set_timeout(pulsetranslator.get_pulsetempo()*3)
+
+                    tm.reset_base()
+
+            if event.key_number == 5: #up
+                pass
+            if event.key_number == 6: #down
+                pass
+            if event.key_number == 7: #left
+                print("left")
+
+    #get time calculation
+    if button_pressed == False:
+        tm.check_time()
